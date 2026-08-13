@@ -21,14 +21,29 @@ const NS = 'http://www.xmind.net/contents/2007/xmap-content';
 
 function isObject(v) { return v && typeof v === 'object' && !Array.isArray(v); }
 
+/** Normalize a XMind "title" value. Can be a string, an object {text}, or
+ *  an array of mixed text runs (XMind uses arrays for rich-text titles). */
+export function normalizeTitle(title) {
+  if (title == null) return '';
+  if (Array.isArray(title)) {
+    return title.map((p) => typeof p === 'string' ? p : (p?.text ?? '')).join('');
+  }
+  if (isObject(title)) return title.text ?? '';
+  return String(title);
+}
+
+/** Collapse internal whitespace runs (incl. newlines) into a single space,
+ *  then trim. Used for sidebar / manifest display. The full text including
+ *  newlines is still in the parsed tree for rendering. */
+export function oneLine(s) {
+  return String(s || '').replace(/\s+/g, ' ').trim();
+}
+
 /* ---------------------- JSON format ---------------------- */
 
 function normalizeJsonNode(node) {
   if (!isObject(node)) return null;
-  // XMind JSON uses "title" strings or { text: "..." } shapes
-  let title = node.title;
-  if (isObject(title)) title = title.text ?? '';
-  if (typeof title !== 'string') title = String(title ?? '');
+  const title = normalizeTitle(node.title);
 
   const out = { id: node.id ?? cryptoId(), title: title.trim() };
   const children = [];
@@ -55,9 +70,9 @@ function normalizeJsonNode(node) {
 }
 
 function parseJsonSheet(sheet) {
-  const title = (sheet.title && (sheet.title.text ?? sheet.title)) || 'Sheet';
+  const title = normalizeTitle(sheet.title) || 'Sheet';
   const root = normalizeJsonNode(sheet.rootTopic || sheet.topic);
-  return { title: String(title).trim(), root };
+  return { title: title.trim(), root };
 }
 
 function parseJson(content) {

@@ -1,8 +1,9 @@
 /**
  * App entry point.
  *   1. Loads the manifest of available .xmind files.
- *   2. Renders the file list in the sidebar.
+ *   2. Renders the file list in the sidebar (with search + counts).
  *   3. Wires toolbar / keyboard to the MindMap controller.
+ *   4. Remembers the last-opened file in localStorage.
  */
 
 import './styles.css';
@@ -12,23 +13,41 @@ import { MindMap } from './renderer.js';
 const $  = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-const fileListEl   = $('#file-list');
-const docTitleEl   = $('#doc-title');
-const docSubEl     = $('#doc-sub');
-const canvasEl     = $('#canvas');
-const canvasWrapEl = $('.canvas-wrap');
-const emptyEl      = $('#empty-state');
-const statusFileEl = $('#status-file');
-const statusNodesEl= $('#status-nodes');
-const zoomLabelEl  = $('#zoom-label');
+const fileListEl    = $('#file-list');
+const docTitleEl    = $('#doc-title');
+const docSubEl      = $('#doc-sub');
+const canvasEl      = $('#canvas');
+const canvasWrapEl  = $('.canvas-wrap');
+const emptyEl       = $('#empty-state');
+const statusFileEl  = $('#status-file');
+const statusNodesEl = $('#status-nodes');
+const zoomLabelEl   = $('#zoom-label');
+const searchEl      = $('#search');
+const searchInputEl = $('#search-input');
+const searchClearEl = $('#search-clear');
+
+const STORAGE_KEY = 'xmind-viewer:last-opened';
+const FILTER_KEY  = 'xmind-viewer:filter';
 
 const state = {
   manifest: null,
+  filtered: null,        // filtered view of manifest.files
   current: null,
-  cache: new Map(),  // url -> parsed tree
+  currentIndex: -1,
+  cache: new Map(),      // url -> parsed tree
+  nodeCounts: new Map(), // id  -> node count
 };
 
-const map = new MindMap(canvasEl, canvasWrapEl);
+const map = new MindMap(canvasEl, canvasWrapEl, {
+  onToggle: ({ collapsed }) => {
+    if (state.current) {
+      state.nodeCounts.set(state.current.id, countNodes(visibleRoot()));
+      updateCountBadge(state.current.id);
+    }
+    // re-emit visible node count
+    statusNodesEl.textContent = `${countNodes(visibleRoot())} nodes`;
+  },
+});
 canvasEl.addEventListener('zoom', (e) => {
   zoomLabelEl.textContent = `${Math.round(e.detail.scale * 100)}%`;
 });
@@ -47,28 +66,55 @@ async function loadManifest() {
   }
 }
 
+function visibleRoot() {
+  if (!map.tree) return null;
+  // The controller always renders the full tree but collapsed subtrees
+  // occupy a single unit. So `countNodes` over the rendered root still
+  // counts collapsed descendants — we want to count only visible nodes.
+  return countVisibleNodes(map.tree);
+}
+
+function countVisibleNodes(n) {
+  if (!n) return 0;
+  let total = 1;
+  if (n._collapsed) return total;
+  for (const c of (n.children || [])) total += countVisibleNodes(c);
+  return total;
+}
+
 function renderFileList(manifest) {
-  fileListEl.innerHTML = '';
   const files = manifest.files || [];
+  state.manifest = manifest;
+  state.filtered = files.slice();
+
+  if (files.length >= 3) searchEl.hidden = false;
+
   if (!files.length) {
-    const empty = document.createElement('p');
-    empty.style.cssText = 'padding:14px 12px;color:var(--text-dim);font-size:12.5px;line-height:1.55;';
-    empty.innerHTML = `No files yet.<br>Add <code>.xmind</code> to <code>public/xmind/</code> and list them in <code>manifest.json</code>.`;
-    fileListEl.appendChild(empty);
+    fileListEl.innerHTML = `
+      <div class="file-list__empty">
+        No files listed.<br>
+        Add an entry to <code>public/xmind/manifest.json</code>.
+      </div>`;
     return;
   }
-  for (const f of files) {
+
+  fileListEl.innerHTML = '';
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
     const btn = document.createElement('button');
     btn.className = 'file-item';
     btn.type = 'button';
     btn.dataset.id = f.id;
+    btn.dataset.index = String(i);
+
     btn.innerHTML = `
       <span class="file-item__title">${escapeHtml(f.title || f.id)}</span>
-      <span class="file-item__meta">${escapeHtml(f.description || f.file || '')}</span>
+      <span class="file-item__count" data-count hidden></span>
     `;
     btn.addEventListener('click', () => openFile(f));
     fileListEl.appendChild(btn);
   }
+  applyFilter(currentFilter());
 }
 
 function setActive(id) {
@@ -78,22 +124,86 @@ function setActive(id) {
   }
 }
 
+function updateCountBadge(id) {
+  const item = $(`.file-item[data-id="${cssEscape(id)}"]`);
+  if (!item) return;
+  const badge = item.querySelector('.file-item__count');
+  if (!badge) return;
+  const n = state.nodeCounts.get(id);
+  if (typeof n === 'number') {
+    badge.textContent = `${n}`;
+    badge.hidden = false;
+  } else {
+    badge.hidden = true;
+  }
+}
+
+/* ------------------------ search/filter ------------------------ */
+
+function currentFilter() {
+  return (searchInputEl.value || '').trim().toLowerCase();
+}
+
+function applyFilter(q) {
+  q = (q || '').trim().toLowerCase();
+  const files = state.manifest?.files || [];
+  let visibleCount = 0;
+  for (const item of $$('.file-item', fileListEl)) {
+    const f = files.find((x) => x.id === item.dataset.id);
+    if (!f) continue;
+    const hay = `${f.title} ${f.id} ${f.file || ''}`.toLowerCase();
+    const match = !q || hay.includes(q);
+    item.style.display = match ? '' : 'none';
+    if (match) visibleCount++;
+  }
+  searchEl.classList.toggle('has-value', !!q);
+
+  const old = fileListEl.querySelector('.file-list__empty--filter');
+  if (old) old.remove();
+  if (q && visibleCount === 0) {
+    const div = document.createElement('div');
+    div.className = 'file-list__empty file-list__empty--filter';
+    div.textContent = `No matches for “${q}”.`;
+    fileListEl.appendChild(div);
+  }
+  try { localStorage.setItem(FILTER_KEY, q); } catch {}
+}
+
+function bindSearch() {
+  let timer = 0;
+  searchInputEl.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => applyFilter(searchInputEl.value), 60);
+  });
+  searchClearEl.addEventListener('click', () => {
+    searchInputEl.value = '';
+    applyFilter('');
+    searchInputEl.focus();
+  });
+  // restore
+  try {
+    const last = localStorage.getItem(FILTER_KEY) || '';
+    if (last) { searchInputEl.value = last; applyFilter(last); }
+  } catch {}
+}
+
 /* ------------------------ file loading ------------------------ */
 
 async function openFile(entry) {
   const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   const url = `${base}/xmind/${entry.file}`;
   state.current = entry;
+  state.currentIndex = (state.manifest?.files || []).findIndex((f) => f.id === entry.id);
   setActive(entry.id);
+  try { localStorage.setItem(STORAGE_KEY, entry.id); } catch {}
   docTitleEl.textContent = entry.title || entry.id;
   docSubEl.textContent = 'Loading…';
   statusFileEl.textContent = entry.file;
 
-  // Mark sidebar item as loading
-  const item = $(`.file-item[data-id="${entry.id}"]`);
-  const meta = item?.querySelector('.file-item__meta');
-  const origMeta = meta?.textContent;
-  if (meta) { meta.classList.add('file-item__meta--loading'); meta.textContent = 'Loading…'; }
+  const item = $(`.file-item[data-id="${cssEscape(entry.id)}"]`);
+  const titleEl = item?.querySelector('.file-item__title');
+  const origTitle = titleEl?.textContent;
+  if (titleEl) { titleEl.classList.add('file-item__title--loading'); titleEl.textContent = 'Loading…'; }
 
   try {
     let tree = state.cache.get(url);
@@ -111,7 +221,10 @@ async function openFile(entry) {
     emptyEl.hidden = false;
     canvasEl.hidden = true;
   } finally {
-    if (meta) { meta.classList.remove('file-item__meta--loading'); meta.textContent = origMeta; }
+    if (titleEl) {
+      titleEl.classList.remove('file-item__title--loading');
+      titleEl.textContent = origTitle;
+    }
   }
 }
 
@@ -121,8 +234,41 @@ function onTreeLoaded(entry, parsed) {
   map.setTree(parsed.root);
   docSubEl.textContent = parsed.title && parsed.title !== parsed.root.title
     ? parsed.title
-    : 'Tap a node to focus, drag to pan.';
+    : 'Click a node to collapse its branch. Hover to highlight the path.';
+  const total = countNodes(parsed.root);
+  state.nodeCounts.set(entry.id, total);
+  updateCountBadge(entry.id);
   statusNodesEl.textContent = `${countNodes(parsed.root)} nodes`;
+}
+
+/* ------------------------ file navigation ------------------------ */
+
+function openByOffset(delta) {
+  const files = state.manifest?.files || [];
+  if (!files.length) return;
+  let idx = state.currentIndex + delta;
+  // wrap around
+  if (idx < 0) idx = files.length - 1;
+  if (idx >= files.length) idx = 0;
+  // skip hidden (filtered out) items
+  const visibleIndices = files
+    .map((f, i) => ({ f, i }))
+    .filter(({ f }) => {
+      const item = $(`.file-item[data-id="${cssEscape(f.id)}"]`);
+      return item && item.style.display !== 'none';
+    })
+    .map(({ i }) => i);
+  if (!visibleIndices.length) return;
+  // find the next visible index >= idx (or wrap)
+  let target = visibleIndices.find((i) => i >= idx);
+  if (target == null) target = visibleIndices[0];
+  openFile(files[target]);
+}
+
+function openByIndex(i) {
+  const files = state.manifest?.files || [];
+  if (i < 0 || i >= files.length) return;
+  openFile(files[i]);
 }
 
 /* ------------------------ toolbar & shortcuts ------------------------ */
@@ -136,16 +282,27 @@ function bindToolbar() {
     if (a === 'zoom-out') map.zoomOut();
     if (a === 'center')   map.fit();
     if (a === 'fullscreen') toggleFullscreen();
+    if (a === 'expand-all')  map.expandAll();
+    if (a === 'collapse-1')  map.collapseToDepth(1);
   });
 
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input, textarea')) return;
-    if (e.metaKey || e.ctrlKey) return;
-    const k = e.key.toLowerCase();
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key;
     if (k === 'f') { e.preventDefault(); toggleFullscreen(); }
-    if (k === 'c' || k === '0') { e.preventDefault(); map.fit(); }
+    if (k === '0' || k === 'c' || k === 'C') { e.preventDefault(); map.fit(); }
     if (k === '+' || k === '=') { e.preventDefault(); map.zoomIn(); }
     if (k === '-' || k === '_') { e.preventDefault(); map.zoomOut(); }
+    // file navigation
+    if (k === '[') { e.preventDefault(); openByOffset(-1); }
+    if (k === ']') { e.preventDefault(); openByOffset(+1); }
+    if (k === 'j' || k === 'J') { e.preventDefault(); openByOffset(+1); }
+    if (k === 'k' || k === 'K') { e.preventDefault(); openByOffset(-1); }
+    // jump by number
+    if (/^[1-9]$/.test(k)) { e.preventDefault(); openByIndex(Number(k) - 1); }
+    // / focuses search
+    if (k === '/') { e.preventDefault(); searchInputEl.focus(); searchInputEl.select(); }
   });
 }
 
@@ -165,19 +322,27 @@ function escapeHtml(s) {
   }[c]));
 }
 
+function cssEscape(s) {
+  return String(s).replace(/(["\\.#:>+~*\[\]()'])/g, '\\$1');
+}
+
 /* ------------------------ boot ------------------------ */
 
 async function boot() {
   bindToolbar();
+  bindSearch();
   state.manifest = await loadManifest();
   renderFileList(state.manifest);
 
-  // Auto-open ?file=<id> or first entry
   const params = new URLSearchParams(location.search);
-  const wanted = params.get('file');
+  const wanted = params.get('file') || safeStorageGet(STORAGE_KEY);
   const initial = (state.manifest.files || []).find((f) => f.id === wanted)
     || (state.manifest.files || [])[0];
   if (initial) openFile(initial);
+}
+
+function safeStorageGet(k) {
+  try { return localStorage.getItem(k); } catch { return null; }
 }
 
 boot();

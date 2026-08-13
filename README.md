@@ -29,10 +29,10 @@ static host.
 
 ## Add a mind map
 
-1. Drop a `.xmind` file into `public/xmind/` (e.g. `roadmap.xmind`).
+1. Drop a `.xmind` file into `public/xmind/`.
 2. Add an entry to `public/xmind/manifest.json`:
 
-   ```json
+   ```jsonc
    {
      "files": [
        { "id": "roadmap", "title": "Q4 Roadmap", "file": "roadmap.xmind" }
@@ -40,9 +40,9 @@ static host.
    }
    ```
 
-3. Push. The site rebuilds and your map appears in the sidebar.
-
-`id` becomes the URL hash: `?file=roadmap` will deep-link straight to it.
+That's the whole schema. Three fields per entry — `id` (used in the
+URL: `?file=roadmap`), `title` (shown in the sidebar), and `file` (the
+xmind filename). Display order is the order they appear in the array.
 
 ## Generate a sample from JSON
 
@@ -58,15 +58,21 @@ Edit `scripts/generate-xmind.mjs` to change the source tree, or import
 
 ## Keyboard shortcuts
 
-| Key      | Action         |
-| -------- | -------------- |
-| `+` / `=` | Zoom in       |
-| `-`      | Zoom out       |
-| `0` / `c`| Fit to view    |
-| `f`      | Toggle fullscreen |
-| Drag     | Pan            |
-| Wheel    | Zoom at cursor |
-| Pinch    | Zoom (touch)   |
+| Key           | Action                                  |
+| ------------- | --------------------------------------- |
+| `+` / `=`     | Zoom in                                 |
+| `-`           | Zoom out                                |
+| `0` / `c`     | Fit to view                             |
+| `f`           | Toggle fullscreen                       |
+| `Click`       | Collapse / expand a node's subtree      |
+| `Hover`       | Highlight the path from root to node    |
+| `Drag`        | Pan                                     |
+| `Wheel`       | Zoom at cursor                          |
+| `Pinch`       | Zoom (touch)                            |
+| `[` / `]`     | Previous / next file                    |
+| `j` / `k`     | Next / previous file                    |
+| `1`–`9`       | Jump to file by position                |
+| `/`           | Focus the file filter                   |
 
 ## Deploy to GitHub Pages
 

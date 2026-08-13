@@ -33,8 +33,10 @@ const TREE = {
       children: [
         { title: 'Pick a file from the sidebar' },
         { title: 'Drag to pan, scroll to zoom' },
+        { title: 'Click any node to collapse its branch' },
+        { title: 'Hover to highlight the path from the root' },
         { title: 'Press F for fullscreen, C to re-center' },
-        { title: 'Use + / − to zoom in and out' },
+        { title: 'Use [ and ] to switch files' },
       ],
     },
     {
@@ -52,9 +54,178 @@ const TREE = {
         { title: '−  Zoom out' },
         { title: 'C  Fit to view' },
         { title: 'F  Fullscreen' },
+        { title: '[ / ]  Prev / next file' },
+        { title: '/  Search files' },
       ],
     },
   ],
+};
+
+const PRODUCT_ROADMAP = {
+  title: 'Product Roadmap — Q3 → Q4 2026',
+  children: [
+    {
+      title: 'Q3 — Foundation',
+      children: [
+        {
+          title: 'Auth & Identity',
+          children: [
+            { title: 'SSO via SAML + OIDC' },
+            { title: 'SCIM provisioning' },
+            { title: 'Audit log export' },
+          ],
+        },
+        {
+          title: 'Data Platform',
+          children: [
+            { title: 'Warehouse migration to Iceberg' },
+            { title: 'New event schema (v3)' },
+            { title: 'Backfill tooling' },
+          ],
+        },
+        {
+          title: 'Mobile',
+          children: [
+            { title: 'iOS 17 widget support' },
+            { title: 'Android tablet layouts' },
+          ],
+        },
+      ],
+    },
+    {
+      title: 'Q4 — Growth',
+      children: [
+        {
+          title: 'Self-serve onboarding',
+          children: [
+            { title: 'Template gallery' },
+            { title: 'Interactive product tour' },
+            { title: 'Sample workspaces' },
+          ],
+        },
+        {
+          title: 'Collaboration',
+          children: [
+            { title: 'Inline comments on maps' },
+            { title: '@mentions in titles' },
+            { title: 'Slack & Teams bridges' },
+          ],
+        },
+        {
+          title: 'AI assist',
+          children: [
+            { title: 'Auto-cluster brainstorm nodes' },
+            { title: 'Summarize long branches' },
+            { title: 'Suggest missing categories' },
+          ],
+        },
+      ],
+    },
+    {
+      title: 'Cross-cutting',
+      children: [
+        {
+          title: 'Reliability',
+          children: [
+            { title: 'p95 < 200ms for map load' },
+            { title: '99.95% SLO across regions' },
+          ],
+        },
+        {
+          title: 'Design system',
+          children: [
+            { title: 'Token pipeline to Figma' },
+            { title: 'Storybook coverage 90%' },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const DESIGN_SYSTEM = {
+  title: 'Design System Atlas',
+  children: [
+    {
+      title: 'Foundations',
+      children: [
+        {
+          title: 'Color',
+          children: [
+            { title: 'Neutral scale (12 steps)' },
+            { title: 'Brand — Honey #E8B257' },
+            { title: 'Semantic — success, warn, danger' },
+            { title: 'Dark mode parity check' },
+          ],
+        },
+        {
+          title: 'Typography',
+          children: [
+            { title: 'Inter Tight — display' },
+            { title: 'Inter — UI' },
+            { title: 'JetBrains Mono — code' },
+            { title: 'Type scale 1.2 ratio' },
+          ],
+        },
+        {
+          title: 'Spacing & radius',
+          children: [
+            { title: '4-pt grid' },
+            { title: 'Radius scale — 6, 10, 14' },
+            { title: 'Container widths' },
+          ],
+        },
+      ],
+    },
+    {
+      title: 'Components',
+      children: [
+        {
+          title: 'Inputs',
+          children: [
+            { title: 'Button — primary, ghost, icon' },
+            { title: 'Text field — single, multi, search' },
+            { title: 'Select — native, combobox' },
+            { title: 'Switch, checkbox, radio' },
+          ],
+        },
+        {
+          title: 'Surfaces',
+          children: [
+            { title: 'Card' },
+            { title: 'Sheet / drawer' },
+            { title: 'Dialog / modal' },
+            { title: 'Toast' },
+          ],
+        },
+        {
+          title: 'Navigation',
+          children: [
+            { title: 'Sidebar' },
+            { title: 'Tabs' },
+            { title: 'Breadcrumb' },
+            { title: 'Command palette' },
+          ],
+        },
+      ],
+    },
+    {
+      title: 'Patterns',
+      children: [
+        { title: 'Empty states' },
+        { title: 'Error & loading states' },
+        { title: 'Destructive confirmations' },
+        { title: 'Keyboard a11y' },
+        { title: 'Reduced motion handling' },
+      ],
+    },
+  ],
+};
+
+const SAMPLES = {
+  welcome: TREE,
+  'product-roadmap': PRODUCT_ROADMAP,
+  'design-system': DESIGN_SYSTEM,
 };
 
 let _id = 0;
@@ -100,12 +271,22 @@ export async function buildXMind(tree, outPath) {
 /* --------------------- CLI --------------------- */
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const out = process.argv[2] || 'public/xmind/welcome.xmind';
-  const source = process.argv[3] ? JSON.parse(process.argv[3]) : TREE;
-  buildXMind(source, out).then((r) => {
-    console.log(`Wrote ${r.outPath} (${r.size} bytes)`);
-  }).catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
+  const arg = process.argv[2];
+  // Single-shot mode:   node generate-xmind.mjs out/my.xmind '{"title":"X"}'
+  if (arg && arg.endsWith('.xmind') && process.argv[3]) {
+    const out = arg;
+    const source = JSON.parse(process.argv[3]);
+    buildXMind(source, out).then((r) => {
+      console.log(`Wrote ${r.outPath} (${r.size} bytes)`);
+    }).catch((e) => { console.error(e); process.exit(1); });
+  } else {
+    // Batch mode: regenerate every sample in the SAMPLES map.
+    (async () => {
+      for (const [id, tree] of Object.entries(SAMPLES)) {
+        const out = `public/xmind/${id}.xmind`;
+        const r = await buildXMind(tree, out);
+        console.log(`Wrote ${r.outPath} (${r.size} bytes)`);
+      }
+    })().catch((e) => { console.error(e); process.exit(1); });
+  }
 }

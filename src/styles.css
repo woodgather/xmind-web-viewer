@@ -156,6 +156,56 @@ code {
 .file-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 .file-list::-webkit-scrollbar-track { background: transparent; }
 
+.search {
+  position: relative;
+  margin: 10px 12px 4px;
+}
+.search input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px 0 30px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font: 500 12.5px var(--font-ui);
+  outline: none;
+  transition: border-color .12s var(--easing), background .12s var(--easing);
+}
+.search input::placeholder { color: var(--text-dim); }
+.search input:hover { background: var(--surface-3); }
+.search input:focus { border-color: var(--accent-line); background: var(--surface-2); }
+.search__icon {
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.search__clear {
+  position: absolute;
+  right: 6px; top: 50%;
+  transform: translateY(-50%);
+  width: 18px; height: 18px;
+  border-radius: 4px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.search__clear:hover { color: var(--text); background: var(--surface-3); }
+.search.has-value .search__clear { display: inline-flex; }
+
+.file-list__empty {
+  padding: 18px 14px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
 .file-item {
   position: relative;
   display: block;
@@ -164,7 +214,7 @@ code {
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius);
-  padding: 10px 12px 11px;
+  padding: 10px 56px 11px 12px;
   margin: 2px 0;
   cursor: pointer;
   color: var(--text-muted);
@@ -197,14 +247,29 @@ code {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color .15s var(--easing);
 }
-.file-item__meta {
-  display: block;
-  font-size: 11.5px;
+.file-item__title--loading { color: var(--accent); }
+
+.file-item__count {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   color: var(--text-dim);
-  margin-top: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  padding: 2px 7px;
+  letter-spacing: 0.02em;
 }
-.file-item__meta--loading { color: var(--accent); }
+.file-item[aria-current="true"] .file-item__count {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
 
 .sidebar__foot {
   padding: 14px 22px 18px;
@@ -390,11 +455,14 @@ code {
   fill: none;
   stroke-width: 1.4;
   stroke-linecap: round;
-  transition: stroke-opacity .15s var(--easing);
+  transition: stroke-opacity .18s var(--easing), stroke-width .18s var(--easing);
+}
+.mm-node {
+  cursor: pointer;
+  transition: opacity .18s var(--easing);
 }
 .mm-node-bg {
-  rx: 10; ry: 10;
-  transition: filter .15s var(--easing);
+  transition: filter .15s var(--easing), stroke-opacity .15s var(--easing);
 }
 .mm-node-text {
   fill: var(--text);
@@ -405,8 +473,15 @@ code {
   pointer-events: none;
   user-select: none;
 }
-.mm-node[data-depth="0"] .mm-node-bg { fill: var(--accent); }
-.mm-node[data-depth="0"] .mm-node-text { fill: #1A1207; font-weight: 600; font-size: 14px; }
+.mm-node[data-depth="0"] .mm-node-bg {
+  fill: var(--accent);
+  stroke: none;
+}
+.mm-node[data-depth="0"] .mm-node-text {
+  fill: #1A1207;
+  font-weight: 600;
+  font-size: 14px;
+}
 
 .mm-node-bg {
   filter: drop-shadow(0 1px 1px rgba(0,0,0,0.35));
@@ -416,6 +491,27 @@ code {
     drop-shadow(0 0 6px var(--accent-soft))
     drop-shadow(0 1px 1px rgba(0,0,0,0.4));
 }
+
+/* hover-path highlight: dim everything not on the path */
+.mm-node--dim { opacity: 0.32; }
+.mm-node--ancestor .mm-node-bg {
+  filter: drop-shadow(0 0 5px var(--accent-soft));
+}
+.mm-edge--dim { stroke-opacity: 0.08; }
+.mm-edge--ancestor {
+  stroke-opacity: 0.95;
+  stroke-width: 1.8;
+}
+
+.mm-chevron {
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity .12s var(--easing);
+}
+.mm-node:hover .mm-chevron { opacity: 1; }
+
+.mm-count rect { transition: fill .12s var(--easing); }
+.mm-node:hover .mm-count rect { fill: var(--surface-2); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

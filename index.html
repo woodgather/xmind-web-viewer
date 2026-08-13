@@ -18,6 +18,18 @@
           </div>
           <p class="brand__tag">Pick a map to start exploring.</p>
         </div>
+        <div class="search" id="search" hidden>
+          <svg class="search__icon" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+            <circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M10 10l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          <input id="search-input" type="search" placeholder="Filter files…" aria-label="Filter files" />
+          <button class="search__clear" type="button" id="search-clear" aria-label="Clear filter">
+            <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true">
+              <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
         <nav id="file-list" class="file-list" aria-label="Available XMind files"></nav>
         <div class="sidebar__foot">
           <a class="foot__link" href="https://github.com/" target="_blank" rel="noopener">View source</a>
@@ -83,7 +95,7 @@
           <span class="statusbar__sep" aria-hidden="true">·</span>
           <span id="status-nodes">0 nodes</span>
           <span class="statusbar__sep" aria-hidden="true">·</span>
-          <span class="hint">Drag to pan · Scroll to zoom · <kbd>F</kbd> fullscreen</span>
+          <span class="hint">Drag to pan · Scroll to zoom · <kbd>Click</kbd> node to collapse · <kbd>[</kbd> <kbd>]</kbd> files · <kbd>F</kbd> fullscreen</span>
         </footer>
       </main>
     </div>
