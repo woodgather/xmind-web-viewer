@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./public/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="View XMind mind maps in the browser. Static, deployable to GitHub Pages." />
+    <title>XMind Viewer</title>
+  </head>
+  <body>
+    <div id="app" class="app">
+      <aside class="sidebar" aria-label="File list">
+        <div class="sidebar__head">
+          <div class="brand">
+            <span class="brand__mark" aria-hidden="true"></span>
+            <span class="brand__name">XMind Viewer</span>
+          </div>
+          <p class="brand__tag">Pick a map to start exploring.</p>
+        </div>
+        <nav id="file-list" class="file-list" aria-label="Available XMind files"></nav>
+        <div class="sidebar__foot">
+          <a class="foot__link" href="https://github.com/" target="_blank" rel="noopener">View source</a>
+        </div>
+      </aside>
+
+      <main class="stage">
+        <header class="toolbar" role="toolbar" aria-label="Viewer controls">
+          <div class="toolbar__title">
+            <h1 id="doc-title" class="doc-title">No file selected</h1>
+            <p id="doc-sub" class="doc-sub">Choose a file from the left.</p>
+          </div>
+          <div class="toolbar__actions">
+            <div class="zoom-group" role="group" aria-label="Zoom">
+              <button class="btn btn--icon" data-action="zoom-out" title="Zoom out (−)" aria-label="Zoom out">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 8h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              </button>
+              <span id="zoom-label" class="zoom-label" aria-live="polite">100%</span>
+              <button class="btn btn--icon" data-action="zoom-in" title="Zoom in (+)" aria-label="Zoom in">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+            <div class="divider" aria-hidden="true"></div>
+            <button class="btn" data-action="center" title="Fit to view (C)" aria-label="Fit to view">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Fit</span>
+            </button>
+            <button class="btn" data-action="fullscreen" title="Fullscreen (F)" aria-label="Fullscreen">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 6V3h3M13 6V3h-3M3 10v3h3M13 10v3h-3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Fullscreen</span>
+            </button>
+          </div>
+        </header>
+
+        <div class="canvas-wrap">
+          <div id="empty-state" class="empty-state">
+            <div class="empty-state__art" aria-hidden="true">
+              <svg viewBox="0 0 240 120" width="220" height="110">
+                <g fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".55">
+                  <rect x="92" y="48" width="56" height="24" rx="12"/>
+                  <path d="M148 60h18a10 10 0 0 1 10 10v6"/>
+                  <path d="M92 60H74a10 10 0 0 0-10 10v6"/>
+                  <path d="M176 76v6a10 10 0 0 1-10 10h-6"/>
+                  <path d="M64 76v6a10 10 0 0 0 10 10h6"/>
+                </g>
+                <g fill="currentColor" opacity=".9">
+                  <circle cx="120" cy="60" r="4"/>
+                  <circle cx="176" cy="76" r="3"/>
+                  <circle cx="64" cy="76" r="3"/>
+                  <circle cx="160" cy="92" r="3"/>
+                  <circle cx="80" cy="92" r="3"/>
+                </g>
+              </svg>
+            </div>
+            <h2>Pick a mind map to get started</h2>
+            <p>Files in <code>public/xmind/</code> will appear in the sidebar.</p>
+          </div>
+          <svg id="canvas" class="canvas" xmlns="http://www.w3.org/2000/svg" hidden></svg>
+        </div>
+
+        <footer class="statusbar" aria-live="polite">
+          <span id="status-file">No file</span>
+          <span class="statusbar__sep" aria-hidden="true">·</span>
+          <span id="status-nodes">0 nodes</span>
+          <span class="statusbar__sep" aria-hidden="true">·</span>
+          <span class="hint">Drag to pan · Scroll to zoom · <kbd>F</kbd> fullscreen</span>
+        </footer>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
